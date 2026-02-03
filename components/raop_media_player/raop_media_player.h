@@ -4,6 +4,8 @@
 #include "esphome/components/media_player/media_player.h"
 #include "esphome/components/i2s_audio/i2s_audio.h"
 
+#include <driver/i2s_std.h>
+
 extern "C" {
 #include "raop_core/raop.h"
 #include "raop_core/raop_sink.h"
@@ -13,14 +15,16 @@ extern "C" {
 namespace esphome {
 namespace raop_media_player {
 
-class RAOPMediaPlayer : public media_player::MediaPlayer, public Component {
+class RAOPMediaPlayer : public Component,
+                        public Parented<i2s_audio::I2SAudioComponent>,
+                        public media_player::MediaPlayer,
+                        public i2s_audio::I2SAudioOut {
  public:
   void setup() override;
   void loop() override;
   void dump_config() override;
   float get_setup_priority() const override { return setup_priority::LATE; }
 
-  void set_i2s_audio_parent(i2s_audio::I2SAudioComponent *parent) { this->i2s_parent_ = parent; }
   void set_dout_pin(uint8_t pin) { this->dout_pin_ = pin; }
   void set_buffer_frames(uint32_t frames) { this->buffer_frames_ = frames; }
 
@@ -39,10 +43,12 @@ class RAOPMediaPlayer : public media_player::MediaPlayer, public Component {
   void stop_raop_();
   bool try_lock_i2s_();
   void unlock_i2s_();
+  void setup_i2s_tx_();
+  void cleanup_i2s_tx_();
   void apply_volume_(uint8_t *data, size_t len);
 
-  i2s_audio::I2SAudioComponent *i2s_parent_{nullptr};
   struct raop_ctx_s *raop_ctx_{nullptr};
+  i2s_chan_handle_t tx_handle_{nullptr};
 
   uint8_t dout_pin_;
   uint32_t buffer_frames_{1024};

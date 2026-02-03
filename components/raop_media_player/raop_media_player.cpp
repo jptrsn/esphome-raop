@@ -50,8 +50,7 @@ void RAOPMediaPlayer::setup() {
 }
 
 void RAOPMediaPlayer::loop() {
-  // Check if stream is still active
-  // Future: could add connection monitoring here
+  // Minimal loop - RAOP handles everything via callbacks
 }
 
 void RAOPMediaPlayer::dump_config() {
@@ -158,7 +157,7 @@ bool RAOPMediaPlayer::try_lock_i2s_() {
   if (this->i2s_locked_)
     return true;
 
-  if (this->i2s_parent_ && this->i2s_parent_->try_lock()) {
+  if (this->parent_ && this->parent_->try_lock()) {
     this->i2s_locked_ = true;
     ESP_LOGD(TAG, "I2S locked");
     return true;
@@ -169,10 +168,75 @@ bool RAOPMediaPlayer::try_lock_i2s_() {
 }
 
 void RAOPMediaPlayer::unlock_i2s_() {
-  if (this->i2s_locked_ && this->i2s_parent_) {
-    this->i2s_parent_->unlock();
+  if (this->i2s_locked_ && this->parent_) {
+    this->parent_->unlock();
     this->i2s_locked_ = false;
     ESP_LOGD(TAG, "I2S unlocked");
+  }
+}
+
+void RAOPMediaPlayer::setup_i2s_tx_() {
+  if (this->tx_handle_ != nullptr) {
+    ESP_LOGW(TAG, "I2S TX already configured");
+    return;
+  }
+
+  // Get I2S port from parent
+  i2s_port_t port = this->parent_->get_port();
+
+  // Configure I2S TX channel
+  i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(port, I2S_ROLE_MASTER);
+
+  esp_err_t err = i2s_new_channel(&chan_cfg, &this->tx_handle_, nullptr);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to create I2S TX channel: %s", esp_err_to_name(err));
+    this->tx_handle_ = nullptr;
+    return;
+  }
+
+  // Configure I2S standard mode for PCM5102A (44.1kHz, 16-bit, stereo)
+  i2s_std_config_t std_cfg = {
+      .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(44100),
+      .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO),
+      .gpio_cfg = {
+          .mclk = I2S_GPIO_UNUSED,
+          .bclk = static_cast<gpio_num_t>(this->parent_->get_bclk_pin()),
+          .ws = static_cast<gpio_num_t>(this->parent_->get_lrclk_pin()),
+          .dout = static_cast<gpio_num_t>(this->dout_pin_),
+          .din = I2S_GPIO_UNUSED,
+          .invert_flags = {
+              .mclk_inv = false,
+              .bclk_inv = false,
+              .ws_inv = false,
+          },
+      },
+  };
+
+  err = i2s_channel_init_std_mode(this->tx_handle_, &std_cfg);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to initialize I2S standard mode: %s", esp_err_to_name(err));
+    i2s_del_channel(this->tx_handle_);
+    this->tx_handle_ = nullptr;
+    return;
+  }
+
+  err = i2s_channel_enable(this->tx_handle_);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to enable I2S channel: %s", esp_err_to_name(err));
+    i2s_del_channel(this->tx_handle_);
+    this->tx_handle_ = nullptr;
+    return;
+  }
+
+  ESP_LOGI(TAG, "I2S TX channel configured successfully");
+}
+
+void RAOPMediaPlayer::cleanup_i2s_tx_() {
+  if (this->tx_handle_ != nullptr) {
+    i2s_channel_disable(this->tx_handle_);
+    i2s_del_channel(this->tx_handle_);
+    this->tx_handle_ = nullptr;
+    ESP_LOGD(TAG, "I2S TX channel cleaned up");
   }
 }
 
@@ -187,6 +251,14 @@ bool RAOPMediaPlayer::handle_raop_command(raop_event_t event, va_list args) {
         return false;
       }
 
+      // Setup I2S TX channel
+      this->setup_i2s_tx_();
+      if (this->tx_handle_ == nullptr) {
+        ESP_LOGE(TAG, "Failed to setup I2S TX channel");
+        this->unlock_i2s_();
+        return false;
+      }
+
       // Allocate RTP buffer in PSRAM
       uint8_t **buffer = va_arg(args, uint8_t **);
       size_t *size = va_arg(args, size_t *);
@@ -196,6 +268,7 @@ bool RAOPMediaPlayer::handle_raop_command(raop_event_t event, va_list args) {
 
       if (*buffer == NULL) {
         ESP_LOGE(TAG, "Failed to allocate RTP buffer!");
+        this->cleanup_i2s_tx_();
         this->unlock_i2s_();
         return false;
       }
@@ -219,6 +292,7 @@ bool RAOPMediaPlayer::handle_raop_command(raop_event_t event, va_list args) {
       ESP_LOGI(TAG, "RAOP: Stream stopped");
       audio_buffer_flush();
       audio_buffer_deinit();
+      this->cleanup_i2s_tx_();
       this->unlock_i2s_();
       this->stream_active_ = false;
       this->state = media_player::MEDIA_PLAYER_STATE_IDLE;
@@ -294,17 +368,26 @@ void RAOPMediaPlayer::handle_raop_data(const uint8_t *data, size_t len, uint32_t
 }
 
 void RAOPMediaPlayer::write_audio_data(const uint8_t *data, size_t len) {
-  if (!this->i2s_locked_ || !this->i2s_parent_)
+  if (!this->i2s_locked_ || this->tx_handle_ == nullptr)
     return;
 
-  // Apply volume if not full
+  const uint8_t *output_data = data;
+  uint8_t temp_buffer[len];
+
+  // Apply volume if needed
   if (this->volume_ < 1.0f || this->muted_) {
-    uint8_t temp_buffer[len];
     memcpy(temp_buffer, data, len);
     this->apply_volume_(temp_buffer, len);
-    this->i2s_parent_->write(temp_buffer, len);
-  } else {
-    this->i2s_parent_->write(data, len);
+    output_data = temp_buffer;
+  }
+
+  size_t bytes_written = 0;
+  esp_err_t err = i2s_channel_write(this->tx_handle_, output_data, len, &bytes_written, portMAX_DELAY);
+
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "I2S write failed: %s", esp_err_to_name(err));
+  } else if (bytes_written != len) {
+    ESP_LOGW(TAG, "I2S partial write: %zu/%zu bytes", bytes_written, len);
   }
 }
 
