@@ -63,5 +63,5 @@ async def to_code(config):
     cg.add(var.set_buffer_frames(config[CONF_BUFFER_FRAMES]))
 
     # Add raop_core to include path
-    cg.add_build_flag("-I" + str(cg.CORE.relative_src_path("esphome/components/raop_media_player/raop_core")))
-    cg.add_build_flag("-I" + str(cg.CORE.relative_src_path("esphome/components/raop_media_player/raop_core/codecs/alac")))
+    cg.add_build_flag("-I" + str(CORE.relative_src_path("esphome/components/raop_media_player/raop_core")))
+    cg.add_build_flag("-I" + str(CORE.relative_src_path("esphome/components/raop_media_player/raop_core/codecs/alac")))
