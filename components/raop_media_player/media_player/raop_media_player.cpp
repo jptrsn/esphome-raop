@@ -194,22 +194,15 @@ void RAOPMediaPlayer::setup_i2s_tx_() {
     return;
   }
 
+  // Get pin config from parent and add our dout pin
+  i2s_std_gpio_config_t gpio_cfg = this->parent_->get_pin_config();
+  gpio_cfg.dout = (gpio_num_t) this->dout_pin_;
+
   // Configure I2S standard mode for PCM5102A (44.1kHz, 16-bit, stereo)
   i2s_std_config_t std_cfg = {
       .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(44100),
       .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO),
-      .gpio_cfg = {
-          .mclk = I2S_GPIO_UNUSED,
-          .bclk = static_cast<gpio_num_t>(this->parent_->get_bclk_pin()),
-          .ws = static_cast<gpio_num_t>(this->parent_->get_lrclk_pin()),
-          .dout = static_cast<gpio_num_t>(this->dout_pin_),
-          .din = I2S_GPIO_UNUSED,
-          .invert_flags = {
-              .mclk_inv = false,
-              .bclk_inv = false,
-              .ws_inv = false,
-          },
-      },
+      .gpio_cfg = gpio_cfg,
   };
 
   err = i2s_channel_init_std_mode(this->tx_handle_, &std_cfg);
