@@ -7,9 +7,9 @@
 #include <driver/i2s_std.h>
 
 extern "C" {
-#include "esphome/components/raop_media_player/raop_core/raop.h"
-#include "esphome/components/raop_media_player/raop_core/raop_sink.h"
-#include "esphome/components/raop_media_player/raop_core/audio_buffer.h"
+#include "raop_core/raop.h"
+#include "raop_core/raop_sink.h"
+#include "raop_core/audio_buffer.h"
 }
 
 namespace esphome {
