@@ -16,7 +16,6 @@ namespace esphome {
 namespace raop_media_player {
 
 class RAOPMediaPlayer : public Component,
-                        public Parented<i2s_audio::I2SAudioComponent>,
                         public media_player::MediaPlayer,
                         public i2s_audio::I2SAudioOut {
  public:

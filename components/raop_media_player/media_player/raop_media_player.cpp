@@ -3,6 +3,7 @@
 #include "esphome/core/hal.h"
 #include "esp_mac.h"
 #include "esp_netif.h"
+#include <esp_timer.h>
 
 namespace esphome {
 namespace raop_media_player {
@@ -61,9 +62,8 @@ void RAOPMediaPlayer::dump_config() {
 
 media_player::MediaPlayerTraits RAOPMediaPlayer::get_traits() {
   auto traits = media_player::MediaPlayerTraits();
-  traits.set_supports_pause(true);
-  traits.set_supports_volume(true);
-  traits.set_supports_mute(true);
+  traits.set_supports_pause(false);
+  // Volume control happens in software, so don't advertise it to HA
   return traits;
 }
 
