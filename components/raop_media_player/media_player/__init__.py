@@ -53,7 +53,6 @@ CONFIG_SCHEMA = cv.All(
     validate_esp_idf_framework,
 )
 
-
 async def to_code(config):
     var = await media_player.new_media_player(config)
     await cg.register_component(var, config)
@@ -62,5 +61,9 @@ async def to_code(config):
     cg.add(var.set_dout_pin(config[CONF_I2S_DOUT_PIN]))
     cg.add(var.set_buffer_frames(config[CONF_BUFFER_FRAMES]))
 
-    # Add raop_core to include path
-    cg.add_build_flag("-I$PROJECT_DIR/src/esphome/components/raop_media_player")
+    # Link the precompiled ALAC library
+    cg.add_library(
+        None,
+        None,
+        "${PROJECT_DIR}/src/esphome/components/raop_media_player/media_player/codecs/alac/libalac.a"
+    )
