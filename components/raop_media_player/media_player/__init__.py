@@ -61,3 +61,7 @@ async def to_code(config):
 
     cg.add(var.set_dout_pin(config[CONF_I2S_DOUT_PIN]))
     cg.add(var.set_buffer_frames(config[CONF_BUFFER_FRAMES]))
+
+    # Add raop_core to include path
+    cg.add_build_flag("-I" + str(cg.CORE.relative_src_path("esphome/components/raop_media_player/raop_core")))
+    cg.add_build_flag("-I" + str(cg.CORE.relative_src_path("esphome/components/raop_media_player/raop_core/codecs/alac")))

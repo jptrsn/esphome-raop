@@ -7,9 +7,9 @@
 #include <driver/i2s_std.h>
 
 extern "C" {
-#include "../raop_core/raop.h"
-#include "../raop_core/raop_sink.h"
-#include "../raop_core/audio_buffer.h"
+#include "raop_core/raop.h"
+#include "raop_core/raop_sink.h"
+#include "raop_core/audio_buffer.h"
 }
 
 namespace esphome {
