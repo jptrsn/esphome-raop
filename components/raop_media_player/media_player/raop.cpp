@@ -79,7 +79,7 @@ static void on_dmap_string(void *ctx, const char *code, const char *name, const 
 struct raop_ctx_s *raop_create(uint32_t host, char *name,
 						unsigned char mac[6], int latency,
 						raop_cmd_cb_t cmd_cb, raop_data_cb_t data_cb) {
-	struct raop_ctx_s *ctx = malloc(sizeof(struct raop_ctx_s));
+	struct raop_ctx_s *ctx = (struct raop_ctx_s *)malloc(sizeof(struct raop_ctx_s));
 	struct sockaddr_in addr;
 	char id[64];
 
@@ -393,7 +393,7 @@ static bool handle_rtsp(raop_ctx_t *ctx, int sock)
 
 			p = strextract(p, ":", "\r\n");
 			base64_pad(p, &padded);
-			aeskey = malloc(strlen(padded));
+			aeskey = (unsigned char *)malloc(strlen(padded));
 			len = base64_decode(padded, aeskey);
 			ctx->rtsp.aeskey = rsa_apply(aeskey, len, &outlen, RSA_MODE_KEY);
 
@@ -405,7 +405,7 @@ static bool handle_rtsp(raop_ctx_t *ctx, int sock)
 		if ((p = strcasestr(body, "aesiv")) != NULL) {
 			p = strextract(p, ":", "\r\n");
 			base64_pad(p, &padded);
-			ctx->rtsp.aesiv = malloc(strlen(padded));
+			ctx->rtsp.aesiv = (char *)malloc(strlen(padded));
 			base64_decode(padded, ctx->rtsp.aesiv);
 
 			free(p);
@@ -696,7 +696,7 @@ static char *rsa_apply(unsigned char *input, int inlen, int *outlen, int mode)
 	switch (mode) {
 	case RSA_MODE_AUTH:
 		mbedtls_rsa_set_padding(trsa, MBEDTLS_RSA_PKCS_V15, MBEDTLS_MD_NONE);
-		outbuf = malloc(mbedtls_rsa_get_len(trsa));
+		outbuf = (uint8_t *)malloc(mbedtls_rsa_get_len(trsa));
 		rc = mbedtls_rsa_pkcs1_encrypt(trsa, mbedtls_ctr_drbg_random, &ctr_drbg,
 		                               inlen, input, outbuf);
 		if (rc != 0) {
@@ -711,7 +711,7 @@ static char *rsa_apply(unsigned char *input, int inlen, int *outlen, int mode)
 
 	case RSA_MODE_KEY:
 		mbedtls_rsa_set_padding(trsa, MBEDTLS_RSA_PKCS_V21, MBEDTLS_MD_SHA1);
-		outbuf = malloc(mbedtls_rsa_get_len(trsa));
+		outbuf = (uint8_t *)malloc(mbedtls_rsa_get_len(trsa));
 		rc = mbedtls_rsa_pkcs1_decrypt(trsa, mbedtls_ctr_drbg_random, &ctr_drbg,
 		                               &olen, input, outbuf, mbedtls_rsa_get_len(trsa));
 		if (rc != 0) {
@@ -743,7 +743,7 @@ static int  base64_pad(char *src, char **padded)
 	int n;
 
 	n = strlen(src) + strlen(src) % 4;
-	*padded = malloc(n + 1);
+	*padded = (char *)malloc(n + 1);
 	memset(*padded, '=', n);
 	memcpy(*padded, src, strlen(src));
 	(*padded)[n] = '\0';

@@ -110,8 +110,8 @@ void audio_buffer_init(audio_output_write_cb_t write_cb) {
     memset(&audio_buf, 0, sizeof(audio_buf));
 
     // Allocate frame buffer in PSRAM
-    audio_buf.frames = heap_caps_malloc(BUFFER_FRAMES * sizeof(audio_frame_t),
-                                        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    audio_buf.frames = (audio_frame_t *)heap_caps_malloc(BUFFER_FRAMES * sizeof(audio_frame_t),
+                                                      MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     if (!audio_buf.frames) {
         ESP_LOGE(TAG, "Failed to allocate frame buffer in PSRAM");
         return;

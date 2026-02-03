@@ -246,7 +246,7 @@ rtp_resp_t rtp_init(struct in_addr host, int latency, char *aeskey, char *aesiv,
 		mbedtls_aes_setkey_dec(&ctx->aes, (unsigned char*) aeskey, 128);
 #endif
 		ctx->decrypt = true;
-		ctx->decrypt_buf = malloc(MAX_PACKET);
+		ctx->decrypt_buf = (u8_t *)malloc(MAX_PACKET);
 	}
 
 	memset(fmtp, 0, sizeof(fmtp));
@@ -379,7 +379,7 @@ static void buffer_alloc(abuf_t *audio_buffer, int size, uint8_t *buf, size_t bu
     LOG_INFO("allocated %d buffers (min=%d) from buffer of %zu bytes", buffer_frames, BUFFER_FRAMES_MIN, buf_size + buffer_frames * size);
 
     for(; buffer_frames < BUFFER_FRAMES_MIN; buffer_frames++) {
-		audio_buffer[buffer_frames].data = malloc(size);
+		audio_buffer[buffer_frames].data = (s16_t *)malloc(size);
 		audio_buffer[buffer_frames].allocated = 1;
 		audio_buffer[buffer_frames].ready = 0;
 	}
@@ -621,7 +621,7 @@ static void rtp_thread_func(void *arg) {
 	int i, sock = -1;
 	int count = 0;
 	bool ntp_sent;
-	char *packet = malloc(MAX_PACKET);
+	char *packet = (char *)malloc(MAX_PACKET);
 	rtp_t *ctx = (rtp_t*) arg;
 
 	for (i = 0; i < 3; i++) {

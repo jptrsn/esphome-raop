@@ -168,7 +168,7 @@ char* strextract(char *s1, char *beg, char *end)
 	p2 = strcasestr(p1, end);
 	if (!p2) return strdup(p1);
 
-	res = malloc(p2 - p1 + 1);
+	res = (char *)malloc(p2 - p1 + 1);
 	memcpy(res, p1, p2 - p1);
 	res[p2 - p1] = '\0';
 
@@ -250,7 +250,7 @@ bool http_parse(int sock, char *method, key_data_t *rkd, char **body, int *len)
 	if (*len) {
 		int size = 0;
 
-		*body = malloc(*len + 1);
+		*body = (char *)malloc(*len + 1);
 		while (*body && size < *len) {
 			int bytes = recv(sock, *body + size, *len - size, 0);
 			if (bytes <= 0) break;
@@ -317,7 +317,7 @@ char *http_send(int sock, char *method, key_data_t *rkd)
 {
 	unsigned sent, len;
 	char *resp = kd_dump(rkd);
-	char *data = malloc(strlen(method) + 2 + strlen(resp) + 2 + 1);
+	char *data = (char *)malloc(strlen(method) + 2 + strlen(resp) + 2 + 1);
 
 	len = sprintf(data, "%s\r\n%s\r\n", method, resp);
 	NFREE(resp);
