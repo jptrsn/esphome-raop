@@ -33,7 +33,7 @@ def validate_esp_idf_framework(config):
 
 
 CONFIG_SCHEMA = cv.All(
-    media_player.MEDIA_PLAYER_SCHEMA.extend(
+    media_player.media_player_schema(RAOPMediaPlayer).extend(
         i2s_audio_component_schema(
             RAOPMediaPlayer,
             default_sample_rate=44100,
@@ -43,7 +43,6 @@ CONFIG_SCHEMA = cv.All(
     )
     .extend(
         {
-            cv.GenerateID(): cv.declare_id(RAOPMediaPlayer),
             cv.Required(CONF_I2S_DOUT_PIN): pins.internal_gpio_output_pin_number,
             cv.Optional(CONF_BUFFER_FRAMES, default=1024): cv.int_range(
                 min=512, max=2048
