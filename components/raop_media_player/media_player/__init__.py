@@ -62,8 +62,5 @@ async def to_code(config):
     cg.add(var.set_buffer_frames(config[CONF_BUFFER_FRAMES]))
 
     # Link the precompiled ALAC library
-    cg.add_library(
-        None,
-        None,
-        "${PROJECT_DIR}/src/esphome/components/raop_media_player/media_player/codecs/alac/libalac.a"
-    )
+    cg.add_build_flag("-L${PROJECT_DIR}/src/esphome/components/raop_media_player/media_player/codecs/alac")
+    cg.add_build_flag("-lalac")
